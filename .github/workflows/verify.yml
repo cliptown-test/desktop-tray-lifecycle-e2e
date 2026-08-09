@@ -1,0 +1,72 @@
+name: Native tray lifecycle
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tray-lifecycle-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CLIPTOWN_FLUTTER_REF: d1e5a906771bd0e4c7f38178a0d721f7117335ca
+  CLIPTOWN_INTERFACES_REF: e4e957b5372dc363fe6a52559c8959f0de781efb
+
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
+        with:
+          persist-credentials: false
+          show-progress: false
+      - run: node scripts/validate-plan.mjs
+
+  macos-lifecycle:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - name: Check out pinned Flutter source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
+        with:
+          repository: cliptown/cliptown-flutter
+          ref: ${{ env.CLIPTOWN_FLUTTER_REF }}
+          path: cliptown-flutter
+          persist-credentials: false
+          show-progress: false
+      - name: Check out pinned interfaces
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
+        with:
+          repository: cliptown/cliptown-interfaces
+          ref: ${{ env.CLIPTOWN_INTERFACES_REF }}
+          path: cliptown-interfaces
+          persist-credentials: false
+          show-progress: false
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.21.0
+        with:
+          channel: stable
+          cache: true
+      - name: Resolve dependencies
+        working-directory: cliptown-flutter
+        run: flutter pub get
+      - name: Exercise native close and tray restore
+        shell: bash
+        working-directory: cliptown-flutter
+        run: |
+          set -o pipefail
+          flutter test integration_test/desktop_lifecycle_test.dart \
+            -d macos --reporter=expanded 2>&1 | tee tray-lifecycle.txt
+      - name: Upload lifecycle evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: native-tray-lifecycle
+          path: cliptown-flutter/tray-lifecycle.txt
+          if-no-files-found: error
+          retention-days: 14

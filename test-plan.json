@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "sourceOrganization": "cliptown",
+  "testOrganization": "cliptown-test",
+  "repository": "desktop-tray-lifecycle-e2e",
+  "profile": "desktop-tray-lifecycle",
+  "platforms": ["macos"],
+  "requiredChecks": [
+    "native-close-backgrounds-process",
+    "hidden-window-skips-taskbar",
+    "tray-open-restores-full-window",
+    "restored-window-is-focused",
+    "restored-window-is-centered"
+  ],
+  "security": {
+    "immutableSourcePins": true,
+    "pullRequestCredentials": false,
+    "leastPrivilege": true,
+    "capturesClipboardData": false
+  }
+}
